@@ -1,12 +1,15 @@
 # Videofront XBlock
 
-This is an [Open edX XBlock](https://xblock.readthedocs.io/en/latest/) for playing videos stored on a [Videofront](https://github.com/regisb/videofront/) instance.
+This is an [Open edX XBlock](https://xblock.readthedocs.io/en/latest/) for playing videos stored on a [Videofront](https://github.com/mukuz97/videofront/) instance.
 
 This XBlock was heavily inspired by the [FUN Videofront XBlock](https://github.com/openfun/fun-videofront-xblock).
 
-## Install
+Note that this XBlock is not compatible with the workbench because the workbench lacks requirejs
 
-    pip install -e https://github.com/regisb/videofront-xblock.git@master#egg=videofront-xblock
+## Install
+SSH into the 'studio' docker container and install
+
+    pip install -e git+https://github.com/mukuz97/videofront-xblock.git@master#egg=videofront-xblock
 
 Add the xblock to your advanced modules in the Studio:
 
