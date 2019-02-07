@@ -4,7 +4,9 @@ This is an [Open edX XBlock](https://xblock.readthedocs.io/en/latest/) for playi
 
 This XBlock was heavily inspired by the [FUN Videofront XBlock](https://github.com/openfun/fun-videofront-xblock).
 
-Note that this XBlock is not compatible with the workbench because the workbench lacks requirejs
+Note that this XBlock is not compatible with the workbench because the workbench lacks requirejs.
+
+Use the [edx Platform](https://github.com/edx/devstack) instead.
 
 ## Install
 SSH into the 'studio' docker container and install
