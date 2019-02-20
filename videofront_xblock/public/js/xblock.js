@@ -100,6 +100,11 @@ function VideofrontXBlock(runtime, element, args) {
       }
     };
 
+    // Restore height of transcript div after exiting full screen
+    player.on('fullscreenchange', function() {
+      $('#tscript').height($('#video').outerHeight(true));
+    });
+
     // Listen to events
     var logTimeOnEvent = function(eventName, logEventName, currentTimeKey, data) {
       player.on(eventName, function() {
