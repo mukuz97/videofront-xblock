@@ -1,7 +1,7 @@
 .videoplayer {
   width: 100%;
   margin-bottom: 1em;
-  background-color: #222;
+  background-color: #2C2F31;
 }
 
 .video-container {
@@ -25,13 +25,16 @@
 
 .videoplayer.transcript-enabled .transcript {
   display: block;
-  width: 40%;
+  width: 38%;
+  padding: 0% 1%;
 }
 
 .videoplayer .transcript .cue {
   cursor: pointer;
+  color: #aaa;
 }
 
 .videoplayer .transcript .cue.current {
   font-weight: bold;
+  color: #eee;
 }
