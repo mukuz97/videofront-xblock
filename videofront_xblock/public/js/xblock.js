@@ -1,7 +1,5 @@
 function VideofrontXBlock(runtime, element, args) {
   'use strict';
-  var require = require || RequireJS.require;
-  require([args.video_js_url], function(videojs) {
 
     console.log("videojs:", videojs);
 
@@ -9,18 +7,7 @@ function VideofrontXBlock(runtime, element, args) {
     var videoplayer = function (elt) {
       var player = videojs(elt);
 
-      // Resolution switching
-      player.resolutionSwitcher({
-        defaultRes: "512"
-      });
-
       // CSS
-      $(player.el()).find(
-        ".vjs-resolution-button .vjs-menu-button-value"
-      ).css("font-size", "1.5em").css("line-height", "2");
-      $(player.el()).find(
-        ".vjs-resolution-button .vjs-menu-item"
-      ).css("text-transform", "none");
       $(player.el()).find(
         ".vjs-subtitles-button .vjs-menu-item"
       ).css("text-transform", "none");
@@ -154,5 +141,4 @@ function VideofrontXBlock(runtime, element, args) {
 
     player.videoJsResolutionSwitcher();
 
-  });
 }
