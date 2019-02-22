@@ -105,6 +105,28 @@ function VideofrontXBlock(runtime, element, args) {
       $('#tscript').height($('#video').outerHeight(true));
     });
 
+    // Play video if player visible
+    var hasBeenPlayed = false;
+    var playVideoIfVisible = function () {
+      var hT = $('#video').offset().top,
+        hH = $('#video').outerHeight(),
+        wH = $(window).height(),
+        wS = $(window).scrollTop();
+      if (wS+wH >= hT && wS <= (hT+hH)){
+        if (!hasBeenPlayed){
+          player.play();
+          hasBeenPlayed = true;
+        }
+      }
+    };
+    player.one('ready', function() {
+      hasBeenPlayed = false;
+      playVideoIfVisible();
+    });
+    $(window).scroll(function() {
+      playVideoIfVisible();
+    });
+
     // Listen to events
     var logTimeOnEvent = function(eventName, logEventName, currentTimeKey, data) {
       player.on(eventName, function() {
