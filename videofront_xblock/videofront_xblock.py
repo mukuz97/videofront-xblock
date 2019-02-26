@@ -61,7 +61,7 @@ class VideofrontXBlock(StudioEditableXBlockMixin, XBlock):
         }
         # It is a common mistake to define video ids suffixed with empty spaces
         video_id = None if self.video_id is None else self.video_id.strip()
-        context['video'], context['messages'], thumbs = self.get_video_context(video_id)
+        context['video'], context['messages'], poster_frames = self.get_video_context(video_id)
         context['downloads'] = self.get_downloads_context(context['video']) if self.allow_download else []
 
         # 2) Render template
@@ -84,7 +84,7 @@ class VideofrontXBlock(StudioEditableXBlockMixin, XBlock):
         fragment.initialize_js('VideofrontXBlock', json_args={
             'course_id': unicode(self.location.course_key) if hasattr(self, 'location') else '',
             'video_id': video_id,
-            'thumbs': thumbs,
+            'poster_frames': poster_frames,
         })
 
         return fragment
@@ -115,10 +115,10 @@ class VideofrontXBlock(StudioEditableXBlockMixin, XBlock):
         """
         messages = []
         video = {}
-        thumbs = ""
+        poster_frames = ""
         if not video_id:
             messages.append(('warning', ugettext_lazy("You need to define a valid Videofront video ID.")))
-            return video, messages, thumbs
+            return video, messages, poster_frames
         settings = self.runtime.service(self, "settings").get_settings_bucket(self)
         api_host = settings.get('HOST')
         api_token = settings.get('TOKEN')
@@ -127,13 +127,13 @@ class VideofrontXBlock(StudioEditableXBlockMixin, XBlock):
                 'warning',
                 ugettext_lazy("Undefined Videofront hostname. Contact your platform administrator.")
             ))
-            return video, messages, thumbs
+            return video, messages, poster_frames
         if not api_token:
             messages.append((
                 'warning',
                 ugettext_lazy("Undefined Videofront auth token. Contact your platform administrator.")
             ))
-            return video, messages, thumbs
+            return video, messages, poster_frames
 
 
         try:
@@ -149,7 +149,7 @@ class VideofrontXBlock(StudioEditableXBlockMixin, XBlock):
                 ugettext_lazy("Could not reach Videofront server. Contact your platform administrator")
             ))
             logger.error("Could not connect to Videofront: %s", e)
-            return video, messages, thumbs
+            return video, messages, poster_frames
 
         if api_response.status_code >= 400:
             if api_response.status_code == 403:
@@ -159,11 +159,11 @@ class VideofrontXBlock(StudioEditableXBlockMixin, XBlock):
             else:
                 messages.append(('error', ugettext_lazy("An unknown error has occurred")))
                 logger.error("Received error %d: %s", api_response.status_code, api_response.content)
-            return video, messages, thumbs
+            return video, messages, poster_frames
 
         # Check processing status is correct
         video = json.loads(api_response.content)
-        thumbs = video['thumbnails']
+        poster_frames = video['poster_frames']
         processing_status = video['processing']['status']
         if processing_status == 'processing':
             messages.append((
@@ -176,7 +176,7 @@ class VideofrontXBlock(StudioEditableXBlockMixin, XBlock):
                 ugettext_lazy("Video processing failed: try again with a different video ID")
             ))
 
-        return video, messages, thumbs
+        return video, messages, poster_frames
 
     def get_downloads_context(self, video):
         """

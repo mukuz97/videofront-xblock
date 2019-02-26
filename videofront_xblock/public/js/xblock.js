@@ -177,7 +177,7 @@ function VideofrontXBlock(runtime, element, args) {
     });
 
     player.vttThumbnails({
-      src: args.thumbs
+      src: args.poster_frames
     });
 
 }
