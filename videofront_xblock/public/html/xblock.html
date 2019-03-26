@@ -50,9 +50,9 @@
       </div>
     </div>
     {% if video_downloads %}
-    <div style="width: auto; height: auto; float: left; margin-left: 1em;">
+    <div style="width: auto; height: auto; float: left; margin: 1em;">
       <p style="float: left; display: block;">Download video: </p>
-      <div style="padding: 1em; width:10em; height: 4em; float:left;">
+      <div style="padding: 0 0 0 1em; width:10em; height: 4em; float:left;">
         {% for download in video_downloads %}
         <a href="{{ download.url }}" target="_blank">{{ download.label }}</a>
         {% if not forloop.last %}<br>{% endif %}
@@ -61,9 +61,9 @@
     </div>
     {% endif %}
     {% if transcript_downloads %}
-    <div style="width: auto; height: auto; float: left; margin-left: 1em;">
+    <div style="width: auto; height: auto; float: left; margin: 1em;">
       <p style="float: left; display: block;">Download Transcript: </p>
-      <div style="padding: 1em; width:10em; height: 4em; float:left;">
+      <div style="padding: 0 0 0 1em; width:10em; height: 4em; float:left;">
         {% for download in transcript_downloads %}
         <a href="{{ download.url }}" target="_blank">{{ download.language }}</a>
         {% if not forloop.last %}<br>{% endif %}

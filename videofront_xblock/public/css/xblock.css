@@ -47,24 +47,22 @@
 
 .like-btn {
   float: left;
-  padding: .40em;
+  padding: .50em;
 }
 
 .dislike-btn {
   float: left;
-  padding: .40em;
+  padding: .50em;
 }
 
 .like-count {
   float: left;
-  font-size: .75em;
-  margin: .8em .75em .8em 0;
+  margin: .5em .75em .5em 0;
 }
 
 .dislike-count {
   float: left;
-  font-size: .75em;
-  margin: .8em .50em .8em 0;
+  margin: .5em .50em .5em 0;
 }
 
 .rate-and-report {
@@ -82,7 +80,7 @@
   float: left;
   width: auto;
   height: auto;
-  padding: .45em .5em .45em .5em;
+  padding: .5em;
   border-style: solid;
   border-color: #aaa;
   border-width: 0px 0px 0px 1px;
