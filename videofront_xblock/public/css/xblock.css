@@ -118,3 +118,8 @@
 .pip-toggle {
   display: none;
 }
+
+.vjs-menu-item {
+  position: relative;
+  left: -.4em;
+}
