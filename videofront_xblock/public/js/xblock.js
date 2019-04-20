@@ -1,9 +1,8 @@
 function VideofrontXBlock(runtime, element, args) {
-  'use strict';
     $(window).resize(function () {
       $('#tscript').height($('#video-cont').outerHeight(true));
     });
-
+    avg_watch_time = args.avg_watch_time;
     console.log("videojs:", videojs);
 
     // Create player function
@@ -38,6 +37,7 @@ function VideofrontXBlock(runtime, element, args) {
           showTranscript(track_showing);
         $('.transcript-toggle', element).text("Disable Transcript");
       }
+      sendControlsAnalytics("0,0,0,0,0,1,0,0,0,0,0");
     });
     player.one('loadedmetadata', function() {
       var tracks = player.textTracks();
@@ -57,6 +57,8 @@ function VideofrontXBlock(runtime, element, args) {
         if (!enableTranscript) {
           disableTranscript();
         }
+
+        sendControlsAnalytics("0,0,0,0,1,0,0,0,0,0,0");
       });
 
       // Highlight current cue
@@ -148,48 +150,6 @@ function VideofrontXBlock(runtime, element, args) {
       playVideoIfVisible();
     });
 
-    // Listen to events
-    var logTimeOnEvent = function(eventName, logEventName, currentTimeKey, data) {
-      player.on(eventName, function() {
-        logTime(logEventName, data, currentTimeKey);
-      });
-    };
-    var logTime = function(logEventName, data, currentTimeKey) {
-      data = data || {};
-      currentTimeKey = currentTimeKey || 'currentTime';
-      data[currentTimeKey] = parseInt(player.currentTime());
-      log(logEventName, data);
-    };
-    var logOnEvent = function(eventName, logEventName, data) {
-      data = data || {};
-      player.on(eventName, function() {
-          log(logEventName, data);
-      });
-    };
-    function log(eventName, data) {
-        var logInfo = {
-          course_id: args.course_id,
-          video_id: args.video_id,
-        };
-        if (data) {
-          $.extend(logInfo, data);
-        }
-        Logger.log(eventName, logInfo);
-    }
-
-    logTimeOnEvent('seeked', 'seek_video', 'new_time');
-    logTimeOnEvent('ended', 'stop_video');
-    logTimeOnEvent('pause', 'pause_video');
-    logTimeOnEvent('play', 'play_video');
-    logOnEvent('loadstart', 'load_video');
-    log('video_player_ready');
-    // Note that we have no show/hide transcript button, so there is nothing to
-    // log for these events
-
-    player.on('ratechange', function() {
-      logTime('speed_change_video', { newSpeed: player.playbackRate() });
-    });
-
     player.videoJsResolutionSwitcher();
 
     player.seekButtons({
@@ -222,6 +182,7 @@ function VideofrontXBlock(runtime, element, args) {
           data: JSON.stringify({voteType: 'like'}),
           success: updateLikeDislike
       });
+      sendControlsAnalytics("0,0,0,0,0,0,1,0,0,0,0");
     });
     $('.dislike-btn', element).click(function(eventObject) {
       $.ajax({
@@ -230,6 +191,7 @@ function VideofrontXBlock(runtime, element, args) {
           data: JSON.stringify({voteType: 'dislike'}),
           success: updateLikeDislike
       });
+      sendControlsAnalytics("0,0,0,0,0,0,1,0,0,0,0");
     });
 
     // Configure drop down menu
@@ -286,6 +248,7 @@ function VideofrontXBlock(runtime, element, args) {
         data: JSON.stringify({voteType: 'audio'}),
         success: updateReportStatus
       });
+      sendControlsAnalytics("0,0,0,0,0,0,0,1,0,0,0");
     });
     $('.report-video-q', element).click(function(eventObject) {
       $.ajax({
@@ -294,5 +257,138 @@ function VideofrontXBlock(runtime, element, args) {
         data: JSON.stringify({voteType: 'video'}),
         success: updateReportStatus
       });
+      sendControlsAnalytics("0,0,0,0,0,0,0,1,0,0,0");
     });
+    $('.analytics_btn', element).click(function(eventObject) {
+      $('#analytics_cont').css('display','flex');
+    });
+  
+    // Analytics Server Urls
+    getTimelineHandlerUrl = runtime.handlerUrl(element, 'getTimeline');
+    saveTimelineHandlerUrl = runtime.handlerUrl(element, 'saveTimeline');
+    saveTotalWatchTimeHandlerUrl = runtime.handlerUrl(element, 'saveTotalWatchTime');
+    saveMostUsedControlsHandlerUrl = runtime.handlerUrl(element, 'saveMostUsedControls');
 }
+
+const video = document.getElementById('video');
+const togglePipButton = document.getElementById('togglePipButton');
+
+// Hide button if Picture-in-Picture is not supported or disabled.
+togglePipButton.hidden = !document.pictureInPictureEnabled ||
+  video.disablePictureInPicture;
+
+togglePipButton.addEventListener('click', function() {
+  // If there is no element in Picture-in-Picture yet, let’s request
+  // Picture-in-Picture for the video, otherwise leave it.
+  if (!document.pictureInPictureElement) {
+    video.requestPictureInPicture()
+    .catch(error => {
+      // Video failed to enter Picture-in-Picture mode.
+    });
+  } else {
+    document.exitPictureInPicture()
+    .catch(error => {
+      // Video failed to leave Picture-in-Picture mode.
+    });
+  }
+  sendControlsAnalytics("0,0,0,0,0,0,0,0,1,0,0");
+});
+
+// Implememt Analytics
+var timeline = [0];
+video.onloadedmetadata = function() {
+  var length = Math.floor(video.duration);
+  // Set duration in analytics page
+  var end_time = new Date(length * 1000).toISOString().substr(11, 8);
+  $('#end_time').text(end_time);
+  var t_timeline = [0];
+  for (let i = timeline.length; i <= length; i++){
+    timeline.push(0);
+    t_timeline.push(0);
+  }
+  var data = t_timeline.toString();
+    saveTimeline(data);
+};
+var prev = -1, count = 0;
+video.ontimeupdate = function() {
+  var curr = Math.floor(video.currentTime);
+  if (curr != prev) {
+    timeline[curr] = timeline[curr] + 1;
+    prev = curr;
+    count++;
+    if (count % 10 == 0){ // Send analytics every 10 seconds
+      var data = timeline.toString();
+      saveTimeline(data);
+    }
+  }
+};
+
+video.onended = function() { // Send total watch time analytics
+  var totalTime = 0;
+  timeline.forEach(element => {
+    totalTime += element;
+  });
+  saveTotalWatchTime(totalTime);
+  // Display in analytics
+  var msg = "You watched this video in " + secondsToString(totalTime) +
+            " which was " + calculateWatchSpeed(totalTime) + " than average"
+  $('#watch_time_msg').text(msg);
+};
+
+function secondsToString(seconds){
+  var time = "";
+  var mins = Math.floor(seconds / 60);
+  var secs = seconds % 60;
+  if (mins == 1)
+    time += mins + " minute";
+  else if (mins > 1)
+    time += mins + " minutes";
+  if (mins > 0)
+    time += " and ";
+  if (secs == 1)
+    time += secs + " second";
+  else if (secs > 1)
+    time += secs + " seconds";
+  return time;
+}
+
+function calculateWatchSpeed(seconds){
+  if (seconds < avg_watch_time)
+    return "quicker";
+  else
+    return "slower";
+}
+
+function saveTimeline(d) {
+  $.ajax({
+    type: "POST",
+    url: saveTimelineHandlerUrl,
+    data: JSON.stringify({timeline: d})
+  });
+};
+
+function saveTotalWatchTime(d) {
+  $.ajax({
+    type: "POST",
+    url: saveTotalWatchTimeHandlerUrl,
+    data: JSON.stringify({watchTime: d})
+  });
+};
+
+$('#analytics_close_btn').click(function(){
+  $('#analytics_cont').css('display','none');
+});
+
+function sendControlsAnalytics(data){
+  $.ajax({
+    type: "POST",
+    url: saveMostUsedControlsHandlerUrl,
+    data: JSON.stringify({controls: data})
+  });
+}
+
+video.onplay = function(){ sendControlsAnalytics("1,0,0,0,0,0,0,0,0,0,0") };
+video.onpause = function(){ sendControlsAnalytics("1,0,0,0,0,0,0,0,0,0,0") };
+video.onvolumechange = function(){ sendControlsAnalytics("0,1,0,0,0,0,0,0,0,0,0") };
+video.onratechange = function(){ sendControlsAnalytics("0,0,1,0,0,0,0,0,0,0,0") };
+video.onseeked = function(){ sendControlsAnalytics("0,0,0,1,0,0,0,0,0,0,0") };

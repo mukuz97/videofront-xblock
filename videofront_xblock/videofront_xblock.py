@@ -12,6 +12,8 @@ from xblockutils.studio_editable import StudioEditableXBlockMixin
 
 import requests
 
+import math
+
 logger = logging.getLogger(__name__)
 
 
@@ -60,7 +62,26 @@ class VideofrontXBlock(StudioEditableXBlockMixin, XBlock):
     aud_reported = Boolean(default=False, scope=Scope.user_state)
     vid_rep_cnt = Integer(default=0, scope=Scope.user_state_summary)
     aud_rep_cnt = Integer(default=0, scope=Scope.user_state_summary)
-    
+
+    # Analytics data
+    user_timeline = String(default="0", scope=Scope.user_state)
+    total_timeline = String(default="0", scope=Scope.user_state_summary)
+    user_watch_time = Integer(default=0, scope=Scope.user_state)
+    total_watch_time = Integer(default=0, scope=Scope.user_state_summary)
+    total_views = Integer(default=0, scope=Scope.user_state_summary)
+    most_used_controls = String(default="0,0,0,0,0,0,0,0,0,0,0",scope=Scope.user_state_summary)
+    # 0 - play/pause
+    # 1 - volume change
+    # 2 - rate change
+    # 3 - seeking
+    # 4 - subtitles
+    # 5 - toggle transcript
+    # 6 - like/dislike
+    # 7 - report
+    # 8 - pip
+    # 9 - download video
+    # 10 - download transcript
+
     def get_icon_class(self):
         """CSS class to be used in courseware sequence list."""
         return 'video'
@@ -76,6 +97,9 @@ class VideofrontXBlock(StudioEditableXBlockMixin, XBlock):
             'reported': self.aud_reported or self.vid_reported,
             'aud_rep_cnt': self.aud_rep_cnt,
             'vid_rep_cnt': self.vid_rep_cnt,
+            'total_timeline': self.calculateTimeline(self.total_timeline.split(",")),
+            'total_views': self.total_views,
+            'most_used_controls': self.calculateMostUsedControls(),
         }
         # It is a common mistake to define video ids suffixed with empty spaces
         video_id = None if self.video_id is None else self.video_id.strip()
@@ -94,6 +118,7 @@ class VideofrontXBlock(StudioEditableXBlockMixin, XBlock):
         fragment.add_css(self.resource_string('public/css/vendor/videojs-resolution-switcher.css'))
         fragment.add_css(self.resource_string('public/css/vendor/videojs-seek-buttons.css'))
         fragment.add_css(self.resource_string('public/css/vendor/videojs-vtt-thumbnails.css'))
+        fragment.add_css_url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css')
         fragment.add_css_url('https://vjs.zencdn.net/7.4.1/video-js.css')
         fragment.add_javascript_url('https://vjs.zencdn.net/7.4.1/video.js')
         fragment.add_javascript(self.resource_string('public/js/xblock.js'))
@@ -109,6 +134,7 @@ class VideofrontXBlock(StudioEditableXBlockMixin, XBlock):
             'course_id': unicode(self.location.course_key) if hasattr(self, 'location') else '',
             'video_id': video_id,
             'poster_frames': poster_frames,
+            'avg_watch_time': self.calc_total_watch_time()
         })
 
         return fragment
@@ -121,6 +147,7 @@ class VideofrontXBlock(StudioEditableXBlockMixin, XBlock):
             'course_id': unicode(self.location.course_key) if hasattr(self, 'location') else '',
             'video_id': video_id,
             'poster_frames': poster_frames,
+            'avg_watch_time': self.calc_total_watch_time()
         })
 
         return fragment
@@ -256,6 +283,76 @@ class VideofrontXBlock(StudioEditableXBlockMixin, XBlock):
             for source in subtitles
         ]
 
+    def calculateTimeline(self, total_timeline, count=0):
+        length = float(len(total_timeline))
+        if length == 0 or self.total_views < 5:
+            return []
+        timeline = [float(x) for x in total_timeline]
+        final_size = 120
+        n_timeline = []
+        if length > final_size:
+            step = length / final_size
+            decimal_step = math.floor(step)
+            fraction_step = step - decimal_step
+            i = s = 0
+            tipping_point = 0.0
+            while i < length:
+                s += timeline[i]
+                tipping_point += fraction_step
+                i += 1
+                if i % decimal_step == 0:
+                    while tipping_point >= 1 and i < length:
+                        s += timeline[i]
+                        tipping_point -= 1
+                        i += 1
+                    n_timeline.append(s)
+                    s = 0
+        else:
+            fraction_step = length / final_size
+            i = 0
+            tipping_point = 0
+            while i < length:
+                while tipping_point <= 1:
+                    n_timeline.append(timeline[i])
+                    tipping_point += fraction_step
+                tipping_point -= 1
+                i += 1
+        if len(n_timeline) == final_size or count > 4:
+            max_h = max(n_timeline)
+            if max_h > 0:
+                final_timeline = [ int(x/max_h * 11) + 1 for x in n_timeline]
+                return final_timeline
+            else:
+                return n_timeline
+        else:
+            return self.calculateTimeline(n_timeline, count + 1)
+
+    def calculateMostUsedControls(self):
+        controls = {
+            0: 'Play/Pause', 1: 'Volume Change', 2: 'Playback Rate Change',
+            3: 'Seeking', 4: 'Subtitles Toggle', 5: 'Transcript Toggle',
+            6: 'Like/Dislike', 7: 'Report', 8: 'Picture in Picture',
+            9: 'Video Download', 10: 'Transcript Download'
+        }
+        most_used = self.most_used_controls.split(",")
+        most_used_dict = {}
+        for i in range(0, len(most_used)):
+            most_used_dict[i] = int(most_used[i])
+        final_list = []
+        for i in range(0, len(most_used_dict)):
+            curr_max_key = max(most_used_dict, key=(lambda key: most_used_dict[key]))
+            if most_used_dict[curr_max_key] > 0:
+                final_list.append(controls[curr_max_key])
+            most_used_dict.pop(curr_max_key)
+
+        return final_list[0:4]
+
+    def calc_total_watch_time(self):
+            if self.total_views > 0 :
+                return self.total_watch_time / self.total_views
+            else:
+                return 0
+
     @XBlock.json_handler
     def like_dislike(self, data, suffix=''): # pylint: disable=unused-argument
         """
@@ -315,3 +412,53 @@ class VideofrontXBlock(StudioEditableXBlockMixin, XBlock):
             'aud_reported': self.aud_reported,
             'vid_reported': self.vid_reported,
         }
+
+    @XBlock.json_handler
+    def saveTimeline(self, data, suffix=''): # pylint: disable=unused-argument
+        """
+        Update the watch data in timeline
+        """
+        
+        timeline = data['timeline']
+        old_timeline = self.user_timeline.split(",")
+        new_timeline = timeline.split(",")
+        total_timeline = self.total_timeline.split(",")
+        for i in range(len(old_timeline), len(new_timeline)):
+            old_timeline.append("0")
+        for i in range(len(total_timeline), len(new_timeline)):
+            total_timeline.append("0")
+        for i in range(0,len(new_timeline)):
+            if int(old_timeline[i]) < int(new_timeline[i]):
+                total_timeline[i] = str(int(total_timeline[i]) + int(new_timeline[i]))
+
+        self.user_timeline = timeline
+        self.total_timeline = ",".join(total_timeline)
+
+        return
+
+    @XBlock.json_handler
+    def saveTotalWatchTime(self, data, suffix=''): # pylint: disable=unused-argument
+        """
+        Return the watch data in timeline
+        """
+        
+        self.total_views += 1
+        self.total_watch_time += data['watchTime']
+        self.user_watch_time = data['watchTime']
+
+    @XBlock.json_handler
+    def saveMostUsedControls(self, data, suffix=''): # pylint: disable=unused-argument
+        """
+        Return the watch data in timeline
+        """
+        
+        new_used_controls = data['controls'].split(",")
+        most_used = self.most_used_controls.split(",")
+        for i in range(len(most_used), len(new_used_controls)):
+            most_used.append("0")
+        for i in range(0, len(new_used_controls)):
+            most_used[i] = str(int(most_used[i]) + int(new_used_controls[i]))
+
+        self.most_used_controls = ",".join(most_used)
+
+        return
