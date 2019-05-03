@@ -13,6 +13,7 @@ from xblockutils.studio_editable import StudioEditableXBlockMixin
 import requests
 
 import math
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +69,11 @@ class VideofrontXBlock(StudioEditableXBlockMixin, XBlock):
     total_timeline = String(default="0", scope=Scope.user_state_summary)
     user_watch_time = Integer(default=0, scope=Scope.user_state)
     total_watch_time = Integer(default=0, scope=Scope.user_state_summary)
+    last_watch_date = Integer(default=0, scope=Scope.user_state)
+    user_views = Integer(default=0, scope=Scope.user_state)
     total_views = Integer(default=0, scope=Scope.user_state_summary)
+    video_downloads = Integer(default=0, scope=Scope.user_state_summary)
+    transcript_downloads = Integer(default=0, scope=Scope.user_state_summary)
     most_used_controls = String(default="0,0,0,0,0,0,0,0,0,0,0",scope=Scope.user_state_summary)
     # 0 - play/pause
     # 1 - volume change
@@ -88,6 +93,7 @@ class VideofrontXBlock(StudioEditableXBlockMixin, XBlock):
 
     def build_fragment(self):
         # 1) Define context
+        final_timeline, final_size = self.calculateTimeline(self.total_timeline.split(","))
         context = {
             'display_name': self.display_name,
             'like_count': self.like_count,
@@ -97,9 +103,14 @@ class VideofrontXBlock(StudioEditableXBlockMixin, XBlock):
             'reported': self.aud_reported or self.vid_reported,
             'aud_rep_cnt': self.aud_rep_cnt,
             'vid_rep_cnt': self.vid_rep_cnt,
-            'total_timeline': self.calculateTimeline(self.total_timeline.split(",")),
+            'total_timeline': final_timeline,
+            'timeline_bar_width': 60.0/final_size,
             'total_views': self.total_views,
             'most_used_controls': self.calculateMostUsedControls(),
+            'user_views': self.user_views,
+            'last_watch_date': datetime.utcfromtimestamp(self.last_watch_date).strftime('%d-%m-%Y'),
+            'video_downloads_cnt': self.video_downloads,
+            'transcript_downloads_cnt':self.transcript_downloads,
         }
         # It is a common mistake to define video ids suffixed with empty spaces
         video_id = None if self.video_id is None else self.video_id.strip()
@@ -284,48 +295,55 @@ class VideofrontXBlock(StudioEditableXBlockMixin, XBlock):
         ]
 
     def calculateTimeline(self, total_timeline, count=0):
-        length = float(len(total_timeline))
-        if length == 0 or self.total_views < 5:
-            return []
-        timeline = [float(x) for x in total_timeline]
-        final_size = 120
+        t_size = len(total_timeline)
+        final_size = 1
+        if t_size == 0 or self.total_views < 5:
+            return [], final_size
+        total_timeline = [float(x) for x in total_timeline]
         n_timeline = []
-        if length > final_size:
-            step = length / final_size
-            decimal_step = math.floor(step)
-            fraction_step = step - decimal_step
-            i = s = 0
-            tipping_point = 0.0
-            while i < length:
-                s += timeline[i]
-                tipping_point += fraction_step
-                i += 1
-                if i % decimal_step == 0:
-                    while tipping_point >= 1 and i < length:
-                        s += timeline[i]
-                        tipping_point -= 1
-                        i += 1
-                    n_timeline.append(s)
-                    s = 0
+        usable_factors = []
+        offset = 0
+        if t_size >= 60:
+            while (len(usable_factors) == 0):
+                factors = self.calculateFactors(t_size + offset)
+                usable_factors = [f for f in factors if t_size/f >= 60 and t_size/f <= 240]
+                offset -= 1
+            final_factor = min(usable_factors)
+            final_size = t_size / final_factor
+            for i in range(0, t_size, final_factor):
+                temp = 0
+                for j in range(0, final_factor):
+                    if i >= t_size:
+                        break
+                    temp += total_timeline[i]
+                    i += 1
+                n_timeline.append(temp)
         else:
-            fraction_step = length / final_size
-            i = 0
-            tipping_point = 0
-            while i < length:
-                while tipping_point <= 1:
-                    n_timeline.append(timeline[i])
-                    tipping_point += fraction_step
-                tipping_point -= 1
-                i += 1
-        if len(n_timeline) == final_size or count > 4:
-            max_h = max(n_timeline)
-            if max_h > 0:
-                final_timeline = [ int(x/max_h * 11) + 1 for x in n_timeline]
-                return final_timeline
-            else:
-                return n_timeline
+            while (len(usable_factors) == 0):
+                factors = self.calculateFactors(t_size + offset)
+                usable_factors = [f for f in factors if t_size*f >= 60 and t_size*f <= 240]
+                offset -= 1
+            final_factor = max(usable_factors)
+            final_size = t_size * final_factor
+            for t in total_timeline:
+                for j in range(0, final_factor):
+                    n_timeline.append(t)
+        max_h = max(n_timeline)
+        if max_h > 0:
+            n_timeline = [ int(x/max_h * 11) + 1 for x in n_timeline]
+        if t_size >= 0:
+            n_timeline = [[i*final_factor, x] for i, x in enumerate(n_timeline)]
         else:
-            return self.calculateTimeline(n_timeline, count + 1)
+            n_timeline = [[i/final_factor, x] for i, x in enumerate(n_timeline)]
+        return n_timeline, final_size
+
+    def calculateFactors(self, num):
+        factors = []
+        for n in range(1, num/2+1):
+            if num % n == 0:
+                factors.append(n)
+        factors.append(num)
+        return factors
 
     def calculateMostUsedControls(self):
         controls = {
@@ -443,8 +461,26 @@ class VideofrontXBlock(StudioEditableXBlockMixin, XBlock):
         """
         
         self.total_views += 1
+        self.user_views += 1
         self.total_watch_time += data['watchTime']
         self.user_watch_time = data['watchTime']
+        self.last_watch_date = data['watchDate']
+
+    @XBlock.json_handler
+    def saveTranscriptDownloaded(self, data, suffix=''): # pylint: disable=unused-argument
+        """
+        Return the watch data in timeline
+        """
+        
+        self.transcript_downloads += 1
+
+    @XBlock.json_handler
+    def saveVideoDownloaded(self, data, suffix=''): # pylint: disable=unused-argument
+        """
+        Return the watch data in timeline
+        """
+        
+        self.video_downloads += 1
 
     @XBlock.json_handler
     def saveMostUsedControls(self, data, suffix=''): # pylint: disable=unused-argument
