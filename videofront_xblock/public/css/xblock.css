@@ -230,3 +230,8 @@
   clear: both;
   margin-top: 2em;
 }
+
+.vjs-menu-item {
+  position: relative;
+  left: -.4em;
+}

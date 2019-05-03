@@ -109,4 +109,129 @@
     </div>
   </div>
 
+<script>
+const video = document.getElementById('video');
+const togglePipButton = document.getElementById('togglePipButton');
+
+// Hide button if Picture-in-Picture is not supported or disabled.
+togglePipButton.hidden = !document.pictureInPictureEnabled ||
+  video.disablePictureInPicture;
+
+togglePipButton.addEventListener('click', function() {
+  // If there is no element in Picture-in-Picture yet, let’s request
+  // Picture-in-Picture for the video, otherwise leave it.
+  if (!document.pictureInPictureElement) {
+    video.requestPictureInPicture()
+    .catch(error => {
+      // Video failed to enter Picture-in-Picture mode.
+    });
+  } else {
+    document.exitPictureInPicture()
+    .catch(error => {
+      // Video failed to leave Picture-in-Picture mode.
+    });
+  }
+  sendControlsAnalytics("0,0,0,0,0,0,0,0,1,0,0");
+});
+
+// Implememt Analytics
+var timeline = [0];
+video.onloadedmetadata = function() {
+  var length = Math.floor(video.duration);
+  // Set duration in analytics page
+  var end_time = new Date(length * 1000).toISOString().substr(11, 8);
+  $('#end_time').text(end_time);
+  var t_timeline = [0];
+  for (let i = timeline.length; i <= length; i++){
+    timeline.push(0);
+    t_timeline.push(0);
+  }
+  var data = t_timeline.toString();
+    saveTimeline(data);
+};
+var prev = -1, count = 0;
+video.ontimeupdate = function() {
+  var curr = Math.floor(video.currentTime);
+  if (curr != prev) {
+    timeline[curr] = timeline[curr] + 1;
+    prev = curr;
+    count++;
+    if (count % 10 == 0){ // Send analytics every 10 seconds
+      var data = timeline.toString();
+      saveTimeline(data);
+    }
+  }
+};
+
+video.onended = function() { // Send total watch time analytics
+  var totalTime = 0;
+  timeline.forEach(element => {
+    totalTime += element;
+  });
+  saveTotalWatchTime(totalTime);
+  // Display in analytics
+  var msg = "You watched this video in " + secondsToString(totalTime) +
+            " which was " + calculateWatchSpeed(totalTime) + " than average"
+  $('#watch_time_msg').text(msg);
+};
+
+function secondsToString(seconds){
+  var time = "";
+  var mins = Math.floor(seconds / 60);
+  var secs = seconds % 60;
+  if (mins == 1)
+    time += mins + " minute";
+  else if (mins > 1)
+    time += mins + " minutes";
+  if (mins > 0)
+    time += " and ";
+  if (secs == 1)
+    time += secs + " second";
+  else if (secs > 1)
+    time += secs + " seconds";
+  return time;
+}
+
+function calculateWatchSpeed(seconds){
+  if (seconds < avg_watch_time)
+    return "quicker";
+  else
+    return "slower";
+}
+
+function saveTimeline(d) {
+  $.ajax({
+    type: "POST",
+    url: saveTimelineHandlerUrl,
+    data: JSON.stringify({timeline: d})
+  });
+};
+
+function saveTotalWatchTime(d) {
+  $.ajax({
+    type: "POST",
+    url: saveTotalWatchTimeHandlerUrl,
+    data: JSON.stringify({watchTime: d})
+  });
+};
+
+$('#analytics_close_btn').click(function(){
+  $('#analytics_cont').css('display','none');
+});
+
+function sendControlsAnalytics(data){
+  $.ajax({
+    type: "POST",
+    url: saveMostUsedControlsHandlerUrl,
+    data: JSON.stringify({controls: data})
+  });
+}
+
+video.onplay = function(){ sendControlsAnalytics("1,0,0,0,0,0,0,0,0,0,0") };
+video.onpause = function(){ sendControlsAnalytics("1,0,0,0,0,0,0,0,0,0,0") };
+video.onvolumechange = function(){ sendControlsAnalytics("0,1,0,0,0,0,0,0,0,0,0") };
+video.onratechange = function(){ sendControlsAnalytics("0,0,1,0,0,0,0,0,0,0,0") };
+video.onseeked = function(){ sendControlsAnalytics("0,0,0,1,0,0,0,0,0,0,0") };
+</script>
+
 </div>
