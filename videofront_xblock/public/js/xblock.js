@@ -268,4 +268,6 @@ function VideofrontXBlock(runtime, element, args) {
     saveTimelineHandlerUrl = runtime.handlerUrl(element, 'saveTimeline');
     saveTotalWatchTimeHandlerUrl = runtime.handlerUrl(element, 'saveTotalWatchTime');
     saveMostUsedControlsHandlerUrl = runtime.handlerUrl(element, 'saveMostUsedControls');
+    saveTranscriptDownloadedHandlerUrl = runtime.handlerUrl(element, 'saveTranscriptDownloaded');
+    saveVideoDownloadedHandlerUrl = runtime.handlerUrl(element, 'saveVideoDownloaded');
 }

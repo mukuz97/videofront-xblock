@@ -65,6 +65,17 @@
   margin: .5em .50em .5em 0;
 }
 
+.pip-toggle{
+  border-style: solid;
+  border-color: #aaa;
+  border-width: 0px 0px 0px 1px;
+}
+
+.analytics_btn, .pip-toggle{
+  float: left;
+  padding: .50em;
+}
+
 .rate-and-report {
   float: left;
   width: auto;
@@ -160,6 +171,9 @@
   background-color: #aaa;
   position: relative;
   float: left;
+}
+.watch_bar:hover {
+  background-color: #555;
 }
 .height1 {
   height: .5em;

@@ -33,11 +33,13 @@
       <div class="like-btn">
         <i class="fa fa-thumbs-o-up" {% if liked %}style="color: green;"{% endif %} ></i>
       </div>
-      <span class="like-count">{{ like_count }}</span>
+      <p class="like-count">{{ like_count }}</p>
       <div class="dislike-btn">
         <i class="fa fa-thumbs-o-down" {% if disliked %}style="color: red;"{% endif %} ></i>
       </div>
-      <span class="dislike-count">{{ dislike_count }}</span>
+      <p class="dislike-count">{{ dislike_count }}</p>
+      <i class="pip-toggle fa fa-window-maximize" id="togglePipButton" title="Toggle Picture in Picture"></i>
+      <i class="analytics_btn fa fa-bar-chart" title="Video Insights"></i>
       <div class="menu-button">
           <i class="fa fa-ellipsis-h"></i>
           <div class="dropdown-content">
@@ -45,39 +47,29 @@
             <a class="report-optn report-audio-q" href="javascript:void(0);">Report Poor Audio Quality</a>
             <a class="report-optn report-video-q" href="javascript:void(0);">Report Poor Video Quality</a>
             <a class="transcript-toggle" href="javascript:void(0);">Disable Transcript</a>
-            <a class="pip-toggle" id="togglePipButton" href="javascript:void(0);">Toggle Picture in Picture</a>
-            <a class="analytics_btn" href="javascript:void(0);">Analytics</a>
           </div>
       </div>
     </div>
     {% if video_downloads %}
-    <div style="width: auto; height: auto; float: left; margin: 1em;">
+    <div style="width: auto; height: auto; float: left; margin-left: 1em;">
       <p style="float: left; display: block;">Download video: </p>
-      <div style="padding: 0 0 0 1em; width:10em; height: 4em; float:left;">
+      <div style="padding: 1em; width:10em; height: 4em; float:left;">
         {% for download in video_downloads %}
-        <a href="{{ download.url }}" target="_blank">{{ download.label }}</a>
+        <a href="{{ download.url }}" id="video_download" target="_blank">{{ download.label }}</a>
         {% if not forloop.last %}<br>{% endif %}
         {% endfor %}
       </div>
     </div>
     {% endif %}
     {% if transcript_downloads %}
-    <div style="width: auto; height: auto; float: left; margin: 1em;">
+    <div style="width: auto; height: auto; float: left; margin-left: 1em;">
       <p style="float: left; display: block;">Download Transcript: </p>
-      <div style="padding: 0 0 0 1em; width:10em; height: 4em; float:left;">
+      <div style="padding: 1em; width:10em; height: 4em; float:left;">
         {% for download in transcript_downloads %}
-        <a href="{{ download.url }}" target="_blank">{{ download.language }}</a>
+        <a href="{{ download.url }}" id="transcript_download" target="_blank">{{ download.language }}</a>
         {% if not forloop.last %}<br>{% endif %}
         {% endfor %}
       </div>
-    </div>
-    {% endif %}
-    {% if most_used_controls %}
-    <div style="width: auto; height: auto; float: left; margin: 1em;">
-      <p style="float: left; display: block;">Most Used Controls: </p>
-      {% for control in most_used_controls %}
-      <li>{{ control }}</li>
-      {% endfor %}
     </div>
     {% endif %}
   </div>
@@ -93,8 +85,8 @@
       <h3>Video Insights</h3>
       <div id="timeline">
         {% if total_timeline %}
-          {% for bar in total_timeline %}
-            <div class="watch_bar height{{bar}}"></div>
+          {% for time, bar in total_timeline %}
+            <div class="watch_bar height{{bar}}" onclick="video.currentTime={{time}};video.requestPictureInPicture()" title="Jump Here" style="width: {{ timeline_bar_width }}vw"></div>
           {% endfor %}
         {% endif %}
       </div>
@@ -105,7 +97,25 @@
       <div id="more_insights">
         <p>Total Views: {{ total_views }}</p>
         <p id="watch_time_msg"></p>
+        <p id="avg_watch_time_msg"></p>
+        {% if user_views > 0 %}
+          <p>You have watched this video {{user_views}} time{% if user_views > 1 %}s{% endif %}, last watched on {{last_watch_date}}.</p>
+        {% endif %}
       </div>
+      {% if most_used_controls %}
+      <div style="width: auto; height: auto; float: left; margin: 1em;">
+        <p style="float: left; display: block;">Most Used Controls: </p>
+        {% for control in most_used_controls %}
+        <li style="color: white;">{{ control }}</li>
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% if video_downloads_cnt %}
+      <div style="width: auto; height: auto; float: left; margin: 1em 2em;">
+        <p style="float: left; display: block;">Video Downloads: {{video_downloads_cnt}}</p><br>
+        <p style="float: left; display: block;">Transcript Downloads: {{transcript_downloads_cnt}}</p>
+      </div>
+      {% endif %}
     </div>
   </div>
 
@@ -170,9 +180,10 @@ video.onended = function() { // Send total watch time analytics
   });
   saveTotalWatchTime(totalTime);
   // Display in analytics
-  var msg = "You watched this video in " + secondsToString(totalTime) +
-            " which was " + calculateWatchSpeed(totalTime) + " than average"
+  var msg = "You watched this " + secondsToString(Math.floor(video.duration)) + " video in " + secondsToString(totalTime);
   $('#watch_time_msg').text(msg);
+  msg = "Average watch time for this video is " + secondsToString(avg_watch_time);
+  $('#avg_watch_time_msg').text(msg);
 };
 
 function secondsToString(seconds){
@@ -192,13 +203,6 @@ function secondsToString(seconds){
   return time;
 }
 
-function calculateWatchSpeed(seconds){
-  if (seconds < avg_watch_time)
-    return "quicker";
-  else
-    return "slower";
-}
-
 function saveTimeline(d) {
   $.ajax({
     type: "POST",
@@ -207,11 +211,13 @@ function saveTimeline(d) {
   });
 };
 
-function saveTotalWatchTime(d) {
+function saveTotalWatchTime(data) {
+  var d = new Date();
+  var seconds = Math.round(d.getTime() / 1000);
   $.ajax({
     type: "POST",
     url: saveTotalWatchTimeHandlerUrl,
-    data: JSON.stringify({watchTime: d})
+    data: JSON.stringify({watchTime: data, watchDate: seconds})
   });
 };
 
@@ -226,6 +232,22 @@ function sendControlsAnalytics(data){
     data: JSON.stringify({controls: data})
   });
 }
+
+$('#transcript_download').click(function(eventObject) {
+  $.ajax({
+    type: "POST",
+    url: saveTranscriptDownloadedHandlerUrl,
+    data: JSON.stringify({download: 1})
+  });
+});
+
+$('#video_download').click(function(eventObject) {
+  $.ajax({
+    type: "POST",
+    url: saveVideoDownloadedHandlerUrl,
+    data: JSON.stringify({download: 1})
+  });
+});
 
 video.onplay = function(){ sendControlsAnalytics("1,0,0,0,0,0,0,0,0,0,0") };
 video.onpause = function(){ sendControlsAnalytics("1,0,0,0,0,0,0,0,0,0,0") };
