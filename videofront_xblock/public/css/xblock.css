@@ -144,17 +144,37 @@
 }
 
 #analytics {
-  padding: 2em;
-  width: auto;
+  padding: 2vw;
+  width: 60vw;
   height: auto;
-  background-color: #2C2F31;
+  background-color: #444;
   border-radius: 5px;
 }
 
-#analytics p,h3 {
+#analytics p,h3,h5,h4 {
   color: white;
   margin: 0;
   display: block;
+}
+
+#analytics h3 {
+  text-align: center;
+}
+
+#analytics .data_display{
+  float: left;
+  margin: 1em;
+}
+#analytics .data_display p{
+  width: auto;
+  text-align: center;
+}
+#analytics .data_display h5{
+  border: 1px #aaa solid;
+  border-width: 0 0 .1em 0;
+}
+#watch_time_msg{
+  clear: both;
 }
 
 #timeline {
@@ -168,12 +188,12 @@
 
 .watch_bar {
   width: .5vw;
-  background-color: #aaa;
+  background-color: #34bf0f;
   position: relative;
   float: left;
 }
 .watch_bar:hover {
-  background-color: #555;
+  background-color: #24820b;
 }
 .height1 {
   height: .5em;
@@ -239,9 +259,10 @@
 }
 
 #more_insights {
-  width: 100%;
+  width: 30vw;
   height: auto;
   clear: both;
+  float:left;
   margin-top: 2em;
 }
 

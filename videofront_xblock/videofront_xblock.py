@@ -330,7 +330,7 @@ class VideofrontXBlock(StudioEditableXBlockMixin, XBlock):
                     n_timeline.append(t)
         max_h = max(n_timeline)
         if max_h > 0:
-            n_timeline = [ int(x/max_h * 11) + 1 for x in n_timeline]
+            n_timeline = [ int(x/max_h * 10) + 2 for x in n_timeline]
         if t_size >= 0:
             n_timeline = [[i*final_factor, x] for i, x in enumerate(n_timeline)]
         else:

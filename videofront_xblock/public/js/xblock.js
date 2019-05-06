@@ -270,4 +270,6 @@ function VideofrontXBlock(runtime, element, args) {
     saveMostUsedControlsHandlerUrl = runtime.handlerUrl(element, 'saveMostUsedControls');
     saveTranscriptDownloadedHandlerUrl = runtime.handlerUrl(element, 'saveTranscriptDownloaded');
     saveVideoDownloadedHandlerUrl = runtime.handlerUrl(element, 'saveVideoDownloaded');
+
+    $('#avg_watch_time').text(secondsToString(avg_watch_time));
 }

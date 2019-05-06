@@ -83,6 +83,7 @@
     <div id="analytics">
       <i id="analytics_close_btn" class="fa fa-close" style="position: relative;float: right;color: white"></i>
       <h3>Video Insights</h3>
+      <h4>Video Heat Map(Clickable)</h4>
       <div id="timeline">
         {% if total_timeline %}
           {% for time, bar in total_timeline %}
@@ -95,11 +96,28 @@
         <p id="end_time">00:00</p>
       </div>
       <div id="more_insights">
-        <p>Total Views: {{ total_views }}</p>
-        <p id="watch_time_msg"></p>
-        <p id="avg_watch_time_msg"></p>
+        <h4>Your Video Insights</h4><br>
+        <div class="data_display">
+          <p>{{ user_views }}</p>
+          <h5>User Views</h5>
+        </div>
         {% if user_views > 0 %}
-          <p>You have watched this video {{user_views}} time{% if user_views > 1 %}s{% endif %}, last watched on {{last_watch_date}}.</p>
+        <div class="data_display">
+            <p>{{ last_watch_date }}</p>
+            <h5>Last Watched</h5>
+        </div>
+        {% endif %}
+        <p id="watch_time_msg"></p><br>
+        <h4 style="clear:both">All Students Video Insights</h4>
+        <div class="data_display">
+            <p>{{ total_views }}</p>
+            <h5>Total Views</h5>
+        </div>
+        {% if total_views > 0 %}
+        <div class="data_display">
+            <p id="avg_watch_time"></p>
+            <h5>Average Watch Time</h5>
+        </div>
         {% endif %}
       </div>
       {% if most_used_controls %}
@@ -110,14 +128,11 @@
         {% endfor %}
       </div>
       {% endif %}
-      {% if video_downloads_cnt %}
-      <div style="width: auto; height: auto; float: left; margin: 1em 2em;">
+      <div style="width: auto; height: auto; float: left; margin: 1em;">
         <p style="float: left; display: block;">Video Downloads: {{video_downloads_cnt}}</p><br>
         <p style="float: left; display: block;">Transcript Downloads: {{transcript_downloads_cnt}}</p>
       </div>
-      {% endif %}
     </div>
-  </div>
 
 <script>
 const video = document.getElementById('video');
@@ -182,8 +197,6 @@ video.onended = function() { // Send total watch time analytics
   // Display in analytics
   var msg = "You watched this " + secondsToString(Math.floor(video.duration)) + " video in " + secondsToString(totalTime);
   $('#watch_time_msg').text(msg);
-  msg = "Average watch time for this video is " + secondsToString(avg_watch_time);
-  $('#avg_watch_time_msg').text(msg);
 };
 
 function secondsToString(seconds){
@@ -194,7 +207,7 @@ function secondsToString(seconds){
     time += mins + " minute";
   else if (mins > 1)
     time += mins + " minutes";
-  if (mins > 0)
+  if (secs > 0 && mins > 0)
     time += " and ";
   if (secs == 1)
     time += secs + " second";
